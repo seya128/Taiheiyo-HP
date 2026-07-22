@@ -26,5 +26,5 @@ jobs:
           protocol: ftps
           # 転送するのは public/ 配下のみ
           local-dir: ./public/
-          # 本番サーバーの公開ディレクトリ
-          server-dir: /public_html/
+          # 本番サーバーの公開ディレクトリ（ログイン先ホーム配下の相対パス）
+          server-dir: public_html/
