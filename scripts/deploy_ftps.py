@@ -56,7 +56,7 @@ def main():
     ftp.login(user, password)
     ftp.prot_p()          # データチャネルも暗号化
     ftp.set_pasv(True)
-    print(f"ログイン成功 (PWD={ftp.pwd()})")
+    print("ログイン成功")
 
     count = 0
     # top-down: 親ディレクトリから順に処理される
