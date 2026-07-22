@@ -5,15 +5,17 @@
 
 ## 公開URL
 
-- 本番（FTPS）: 本番サーバー（`/public_html/`）
+- 本番（BIGLOBE / FTPS）: `/public_html/`
 - 確認用（GitHub Pages）: https://seya128.github.io/Taiheiyo-HP/
 
-GitHub Actions により、ブランチごとに以下の2系統でデプロイされます。
+デプロイは2系統です（いずれも `public/` 配下のみが対象）。
 
-- `main` へ push → **FTPS で本番サーバーへ**転送
-- `staging` へ push → **GitHub Pages（確認用）**へデプロイ
+- **確認用**: `staging` へ push → GitHub Actions が GitHub Pages へ自動デプロイ
+- **本番**: ローカルから `bash scripts/deploy.local.sh` を実行（FTPS）
+  - BIGLOBE が FTP接続元IPを国内に制限しているため、**日本国内の回線から手動実行**する。
+    GitHub Actions（海外IP）では実行できない。
 
-いずれも `public/` 配下のみが対象です。
+詳細は [docs/deployment.md](docs/deployment.md) を参照。
 
 ## リポジトリ構成
 
@@ -22,7 +24,8 @@ Taiheiyo-HP/
 ├── README.md              このファイル
 ├── docs/                  プロジェクトのドキュメント
 ├── public/                公開されるサイト本体（HTML/CSS/JS/画像）
-└── .github/workflows/     GitHub Actions（deploy-ftps.yml / deploy-pages.yml）
+├── scripts/               本番デプロイ用スクリプト（deploy_ftps.py）
+└── .github/workflows/     GitHub Actions（deploy-pages.yml）
 ```
 
 ## ドキュメント

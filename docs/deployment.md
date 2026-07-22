@@ -1,88 +1,86 @@
 # デプロイ
 
-ブランチごとに 2 系統でデプロイします。
+デプロイ先は2系統です。
 
-```
-staging ブランチに push  →  GitHub Pages（確認用サイト）
-main    ブランチに push  →  FTPS で本番サーバーへ
-```
+| 対象 | デプロイ先 | 実行方法 |
+|---|---|---|
+| 確認用 | GitHub Pages | `staging` へ push（GitHub Actions が自動デプロイ） |
+| 本番 | BIGLOBE（FTPS） | **ローカルからスクリプト実行**（下記参照） |
 
 いずれも公開対象は `public/` 配下のみです。
 
-| ブランチ | デプロイ先 | ワークフロー |
-|---|---|---|
-| `staging` | GitHub Pages（確認用） | [`deploy-pages.yml`](../.github/workflows/deploy-pages.yml) |
-| `main` | 本番サーバー（FTPS） | [`deploy-ftps.yml`](../.github/workflows/deploy-ftps.yml) |
-
-どちらも `workflow_dispatch` を設定しているので、GitHub の Actions タブから手動実行も可能です。
-
 ---
 
-## staging → GitHub Pages（確認用）
+## 確認用: staging → GitHub Pages（自動）
 
-`staging` ブランチへ push すると、`public/` 配下が
-GitHub Pages（https://seya128.github.io/Taiheiyo-HP/）へデプロイされます。
+`staging` ブランチへ push すると、GitHub Actions が `public/` 配下を
+GitHub Pages（https://seya128.github.io/Taiheiyo-HP/）へ自動デプロイします。
 
-```
-staging に push
-   ↓
-① Checkout（リポジトリ取得）
-   ↓
-② public/ を公開用アーティファクトに変換
-   ↓
-③ GitHub Pages へデプロイ
-   ↓
-確認用サイトに反映（30秒〜1分程度）
-```
+ワークフロー: [`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml)
 
 ### 前提設定
 
 - リポジトリ Settings → Pages → Source = **GitHub Actions**
 - `github-pages` 環境の Deployment branches に **`staging`** を許可
-  （Settings → Environments → github-pages → Deployment branches and tags）
 
 ---
 
-## main → FTPS 本番サーバー
+## 本番: BIGLOBE へ FTPS（ローカルから手動）
 
-`main` ブランチへ push すると、`public/` 配下が FTPS で本番サーバーの
-`/public_html/` へ転送されます（[`SamKirkland/FTP-Deploy-Action`](https://github.com/SamKirkland/FTP-Deploy-Action) を使用）。
+### なぜローカル実行なのか
 
-```
-main に push
-   ↓
-① Checkout（リポジトリ取得）
-   ↓
-② FTPS で public/ を本番サーバーへ転送
-   ↓
-本番サイトに反映
-```
+BIGLOBE の FTPS サーバー（`ftps.biglobe.ne.jp`）は、**接続元IPを国内（ISP網）に制限**しています。
+このため GitHub Actions などクラウド（海外IP）のランナーからは、ログインはできても
+`/public_html` にアクセスできず（`550 Permission denied` / `No such file or directory`）、
+自動デプロイができません。
 
-### 前提設定：GitHub Secrets
+> 検証済みの事実:
+> - 海外IP（GitHub ランナー）: ログイン成功 → `PWD`/`CWD` が拒否される
+> - 国内IP（手元の回線）: すべて成功
+>
+> さらにこのサーバーは `MLSD` 非対応のため、`SamKirkland/FTP-Deploy-Action` や
+> `lftp` のディレクトリ走査とも相性が悪い。標準ライブラリ `ftplib` を使う
+> [`scripts/deploy_ftps.py`](../scripts/deploy_ftps.py) で確実に転送する。
 
-リポジトリ Settings → Secrets and variables → Actions で以下を登録します。
+### 手順
 
-| Secret | 内容 |
-|---|---|
-| `FTP_SERVER` | 本番サーバーのホスト名（例: `ftp.example.com`） |
-| `FTP_USERNAME` | FTPS ユーザー名 |
-| `FTP_PASSWORD` | FTPS パスワード |
+1. `main` に最新の変更が反映されていることを確認（通常は staging で確認後に main へマージ）
+2. **日本国内の回線から**、リポジトリのルートで以下を実行:
 
-### 設定値
+   ```bash
+   bash scripts/deploy.local.sh
+   ```
 
-- プロトコル: **FTPS**（暗号化FTP）
-- 転送元: `./public/`
-- 転送先（server-dir）: `/public_html/`
+   `scripts/deploy.local.sh` は認証情報を含むため `.gitignore` 済み（リポジトリには入っていない）。
+   手元に無い場合は、以下の内容で作成する:
 
-※ 転送先ディレクトリやポートが異なる場合は
-  [`deploy-ftps.yml`](../.github/workflows/deploy-ftps.yml) の `server-dir` などを調整してください。
+   ```bash
+   #!/usr/bin/env bash
+   set -euo pipefail
+   cd "$(dirname "$0")/.."
+   export FTP_SERVER="ftps.biglobe.ne.jp"
+   export FTP_USERNAME="<ユーザー名>"
+   export FTP_PASSWORD="<パスワード>"
+   python3 scripts/deploy_ftps.py
+   ```
 
----
+   または環境変数を直接指定して実行:
 
-## デプロイ結果の確認
+   ```bash
+   FTP_SERVER="ftps.biglobe.ne.jp" FTP_USERNAME="<ユーザー名>" FTP_PASSWORD="<パスワード>" \
+     python3 scripts/deploy_ftps.py
+   ```
+
+3. `完了: N ファイルを転送しました。` と表示されれば本番反映完了。
+
+### 挙動
+
+- `public/` 配下を `/public_html/` へ**上書き・追加**する（既存ファイルの削除はしない）。
+- サブディレクトリ（`img/` `js/` など）が無ければ自動作成する。
+
+### 参考: 転送先の確認（読み取り）
 
 ```bash
-gh run list --limit 5          # 直近の実行一覧
-gh run watch <run-id>          # 実行中のログを追う
-gh api repos/seya128/Taiheiyo-HP/pages --jq '.html_url,.status'  # Pages の状態
+curl -s --ftp-ssl -k --list-only "ftp://ftps.biglobe.ne.jp/public_html/" \
+  --user "<ユーザー名>:<パスワード>"
 ```

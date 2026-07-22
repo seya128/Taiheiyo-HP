@@ -1,0 +1,10 @@
+# ローカル本番デプロイ用スクリプト（FTPS認証情報を含むためコミットしない）
+/scripts/deploy.local.sh
+
+# 環境変数ファイル
+*.env
+.env
+
+# Python
+__pycache__/
+*.pyc
