@@ -5,9 +5,15 @@
 
 ## 公開URL
 
-- 本番（GitHub Pages）: https://seya128.github.io/Taiheiyo-HP/
+- 本番（FTPS）: 本番サーバー（`/public_html/`）
+- 確認用（GitHub Pages）: https://seya128.github.io/Taiheiyo-HP/
 
-`main` ブランチへ push すると、GitHub Actions により `public/` 配下が自動でデプロイされます。
+GitHub Actions により、ブランチごとに以下の2系統でデプロイされます。
+
+- `main` へ push → **FTPS で本番サーバーへ**転送
+- `staging` へ push → **GitHub Pages（確認用）**へデプロイ
+
+いずれも `public/` 配下のみが対象です。
 
 ## リポジトリ構成
 
@@ -16,7 +22,7 @@ Taiheiyo-HP/
 ├── README.md              このファイル
 ├── docs/                  プロジェクトのドキュメント
 ├── public/                公開されるサイト本体（HTML/CSS/JS/画像）
-└── .github/workflows/     GitHub Actions（デプロイ設定）
+└── .github/workflows/     GitHub Actions（deploy-ftps.yml / deploy-pages.yml）
 ```
 
 ## ドキュメント
