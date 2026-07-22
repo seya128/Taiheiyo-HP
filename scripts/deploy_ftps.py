@@ -23,13 +23,16 @@ REMOTE_DIR = "/public_html"
 
 def cd_or_make(ftp, path):
     """path まで移動。無ければ 1 階層ずつ作成して移動する。"""
+    if path in ("", "/"):
+        ftp.cwd("/")
+        return
     try:
         ftp.cwd(path)
         return
     except error_perm:
         pass
     parent, _, child = path.rpartition("/")
-    cd_or_make(ftp, parent if parent else "/")
+    cd_or_make(ftp, parent)
     try:
         ftp.mkd(child)
         print(f"  📁 created {path}")
@@ -57,6 +60,14 @@ def main():
     ftp.prot_p()          # データチャネルも暗号化
     ftp.set_pasv(True)
     print("ログイン成功")
+
+    # 診断: ランナーから CWD が通るか（IP制限の切り分け）
+    try:
+        ftp.cwd(REMOTE_DIR)
+        print(f"CWD {REMOTE_DIR} OK")
+    except Exception as e:
+        print(f"CWD {REMOTE_DIR} 失敗: {e!r}")
+        raise
 
     count = 0
     # top-down: 親ディレクトリから順に処理される
