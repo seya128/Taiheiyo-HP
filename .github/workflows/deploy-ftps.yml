@@ -28,3 +28,6 @@ jobs:
           local-dir: ./public/
           # 本番サーバーの公開ディレクトリ（ログイン先ホーム配下の相対パス）
           server-dir: public_html/
+          # 初回のみ: 既存ファイルと衝突するため一旦クリアして全アップロード。
+          # 成功後は差分デプロイにするため false に戻す。
+          dangerous-clean-slate: true
