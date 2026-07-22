@@ -17,24 +17,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install lftp
-        run: sudo apt-get update -qq && sudo apt-get install -y lftp
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
 
-      # BIGLOBE の FTPS は MLSD 非対応のため、MLSD前提のアクションは使えない。
-      # LIST ベースで動く lftp の mirror を使用する。
-      - name: Deploy via FTPS (lftp mirror)
+      # BIGLOBE の FTPS は MLSD 非対応で FTP-Deploy-Action / lftp と相性が悪いため、
+      # 標準ライブラリ ftplib(FTP_TLS) の自作スクリプトで public/ を転送する。
+      - name: Deploy via FTPS
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
-        run: |
-          lftp -c "
-          set ftp:ssl-force true;
-          set ftp:ssl-protect-data true;
-          set ssl:verify-certificate no;
-          set net:max-retries 2;
-          set net:timeout 20;
-          open -u '$FTP_USERNAME','$FTP_PASSWORD' '$FTP_SERVER';
-          mirror --reverse --verbose --parallel=4 ./public/ /public_html/;
-          bye;
-          "
+        run: python3 scripts/deploy_ftps.py
